@@ -40,6 +40,7 @@ export default function LeadOSApp() {
 
   // Modal States
   const [isAnalyzingOpen, setIsAnalyzingOpen] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [analyzingSummary, setAnalyzingSummary] = useState('');
   const [isOutreachOpen, setIsOutreachOpen] = useState(false);
   const [outreachCompany, setOutreachCompany] = useState<CompanyLead | null>(null);
@@ -74,28 +75,43 @@ export default function LeadOSApp() {
     const queryLabel = query || (filters?.industries?.length ? `${filters.industries.join(', ')} (${filters.locations?.join(', ') || 'Global'})` : 'High-Growth Tech Accounts');
     setAnalyzingSummary(`Searching "${queryLabel}" across live job boards, SEC filings & firmographics...`);
     setIsAnalyzingOpen(true);
+    setIsSearchLoading(true);
 
     try {
       const res = await fetch('/api/gemini/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, filters }),
+        body: JSON.stringify({
+          query,
+          filters,
+          existingCompanyIds: companies.map((c) => c.id),
+        }),
       });
       const data = await res.json();
 
       if (data.results && Array.isArray(data.results)) {
-        setCompanies(data.results);
-        setLastSearchSummary(data.summary || `Found ${data.results.length} verified accounts matching "${queryLabel}"`);
+        setCompanies((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const newLeads = data.results.filter((r: CompanyLead) => !existingIds.has(r.id));
+          
+          if (newLeads.length > 0) {
+            return [...newLeads, ...prev];
+          }
+          return data.results;
+        });
+        setLastSearchSummary(data.summary || `Discovered ${data.results.length} verified accounts for "${queryLabel}"`);
       }
     } catch (e) {
       console.error('Search API error', e);
+    } finally {
+      setIsSearchLoading(false);
     }
 
     // Add activity event
     const newEvent: ActivityEvent = {
       id: `act-${Date.now()}`,
       title: `Live intelligence search completed`,
-      description: `Executed query for "${query || 'B2B SaaS with SDR hiring'}" and ranked accounts by multi-factor score.`,
+      description: `Executed query for "${query || 'B2B SaaS with SDR hiring'}" and expanded qualified accounts pipeline.`,
       time: 'Just now',
       dateGroup: 'TODAY',
       type: 'search',
@@ -389,6 +405,7 @@ export default function LeadOSApp() {
       {/* Modals */}
       <AnalyzingModal
         isOpen={isAnalyzingOpen}
+        isLoading={isSearchLoading}
         onComplete={handleAnalysisCompleted}
         querySummary={analyzingSummary}
       />

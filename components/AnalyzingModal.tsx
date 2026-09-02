@@ -1,38 +1,62 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Sparkles, CheckCircle2, Loader2, ShieldCheck, Zap } from 'lucide-react';
 
 interface AnalyzingModalProps {
   isOpen: boolean;
   onComplete: () => void;
   querySummary?: string;
+  isLoading?: boolean;
 }
 
-export default function AnalyzingModal({ isOpen, onComplete, querySummary }: AnalyzingModalProps) {
-  const [progress, setProgress] = useState(15);
+export default function AnalyzingModal({
+  isOpen,
+  onComplete,
+  querySummary,
+  isLoading = false,
+}: AnalyzingModalProps) {
+  const [progress, setProgress] = useState(10);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
+  // Whenever modal opens, ALWAYS reset progress to starting state
   useEffect(() => {
     if (!isOpen) {
+      setProgress(10);
       return;
     }
 
+    // Reset progress to 10 on open
+    setProgress(10);
+
+    // Progressive simulated lead synthesis steps
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onComplete();
-          }, 400);
-          return 100;
-        }
-        const next = prev + 18;
-        return next > 100 ? 100 : next;
+        if (prev < 35) return prev + 12;
+        if (prev < 70) return prev + 8;
+        if (prev < 90) return prev + 4;
+        // Hold at 92% if actual API fetch is still in progress
+        if (isLoading && prev >= 90) return 92;
+        return prev;
       });
-    }, 320);
+    }, 180);
 
     return () => clearInterval(interval);
-  }, [isOpen, onComplete]);
+  }, [isOpen, isLoading]);
+
+  // When loading finishes (or when progress reaches 90+ without loading), complete to 100%
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (!isLoading && progress >= 85) {
+      setProgress(100);
+      const timer = setTimeout(() => {
+        onCompleteRef.current();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isLoading, progress]);
 
   if (!isOpen) return null;
 
@@ -113,14 +137,14 @@ export default function AnalyzingModal({ isOpen, onComplete, querySummary }: Ana
           </div>
 
           <div className="flex items-center gap-3 text-xs">
-            {progress >= 90 ? (
+            {progress >= 85 ? (
               <CheckCircle2 className="w-4 h-4 text-[#237A52] shrink-0" />
             ) : progress >= 65 ? (
               <Loader2 className="w-4 h-4 text-[#005138] animate-spin shrink-0" />
             ) : (
               <div className="w-4 h-4 rounded-full border border-[#D6D6D0] shrink-0"></div>
             )}
-            <span className={progress >= 90 ? 'text-[#1a1c1b] font-medium' : 'text-[#8A8F98]'}>
+            <span className={progress >= 85 ? 'text-[#1a1c1b] font-medium' : 'text-[#8A8F98]'}>
               Computing Multi-Factor Lead Scores (0-100)
             </span>
           </div>
@@ -128,7 +152,7 @@ export default function AnalyzingModal({ isOpen, onComplete, querySummary }: Ana
           <div className="flex items-center gap-3 text-xs">
             {progress >= 100 ? (
               <CheckCircle2 className="w-4 h-4 text-[#237A52] shrink-0" />
-            ) : progress >= 90 ? (
+            ) : progress >= 85 ? (
               <Loader2 className="w-4 h-4 text-[#005138] animate-spin shrink-0" />
             ) : (
               <div className="w-4 h-4 rounded-full border border-[#D6D6D0] shrink-0"></div>
@@ -139,8 +163,9 @@ export default function AnalyzingModal({ isOpen, onComplete, querySummary }: Ana
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 text-[11px] text-[#8A8F98]">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#237A52]" />
+        {/* Security / Quality Seal */}
+        <div className="pt-2 flex items-center justify-center gap-1.5 text-[11px] text-[#8A8F98]">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#005138]" />
           <span>SOC2 Type II Compliant & Verified Corporate Registries</span>
         </div>
       </div>

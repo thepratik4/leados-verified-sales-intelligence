@@ -28,14 +28,16 @@ interface DiscoverViewProps {
 }
 
 const POPULAR_PROMPTS = [
+  'Breakout B2B SaaS & underdog startups with <100 employees actively hiring',
   'Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps',
   'Series B+ FinTech startups in New York expanding transatlantic operations',
-  'Enterprise AI & MLOps infrastructure companies with >100 headcount',
+  'High-growth AI & Developer Infrastructure startups with modern GTM stack',
   'Supply chain and logistics firms undergoing cloud ERP modernization',
-  'Cybersecurity companies in Western Europe with high growth',
+  'Cybersecurity companies with >30% YoY growth',
 ];
 
 const INDUSTRIES = [
+  'All',
   'B2B SaaS',
   'FinTech',
   'Supply Chain',
@@ -47,6 +49,7 @@ const INDUSTRIES = [
 ];
 
 const LOCATIONS = [
+  'All Locations',
   'United States',
   'San Francisco, CA',
   'New York, NY',
@@ -57,24 +60,24 @@ const LOCATIONS = [
   'Western Europe',
 ];
 
-const SIZES = ['1 - 50', '51 - 200', '201 - 500', '500 - 1000', '1,000+'];
+const SIZES = ['All', '1 - 50', '51 - 200', '201 - 500', '500 - 1000', '1,000+'];
 
 export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverViewProps) {
   const [prompt, setPrompt] = useState(
-    'Mid-market B2B SaaS companies in the US with 500-1000 employees actively hiring sales reps'
+    'Breakout B2B SaaS & underdog startups with high-velocity hiring'
   );
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['B2B SaaS']);
   const [selectedLocations, setSelectedLocations] = useState<string[]>(['United States']);
-  const [selectedSize, setSelectedSize] = useState<string>('500 - 1000');
+  const [selectedSize, setSelectedSize] = useState<string>('All');
   const [keywords, setKeywords] = useState('Salesforce, Cloud, Enterprise GTM, Expansion');
   const [showAdvanced, setShowAdvanced] = useState(true);
 
   const [advancedFilters, setAdvancedFilters] = useState({
-    revenue: true, // >$10M ARR
-    funding: true, // Series B+
+    revenue: false, // Don't restrict by default so underdog companies are included!
+    funding: false, // Don't restrict by default
     growthRate: true, // >30% YoY
     activelyHiring: true, // Active hiring
-    techStack: true, // Enterprise CRM
+    techStack: true, // Modern Tech Stack
   });
 
   const [customFilters, setCustomFilters] = useState<string[]>(['SOC2 Certified']);
@@ -82,22 +85,30 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
   const [isAddingCustom, setIsAddingCustom] = useState(false);
 
   const toggleIndustry = (ind: string) => {
-    if (selectedIndustries.includes(ind)) {
-      if (selectedIndustries.length > 1) {
-        setSelectedIndustries(selectedIndustries.filter((i) => i !== ind));
-      }
+    if (ind === 'All') {
+      setSelectedIndustries(['All']);
+      return;
+    }
+    const withoutAll = selectedIndustries.filter((i) => i !== 'All');
+    if (withoutAll.includes(ind)) {
+      const remaining = withoutAll.filter((i) => i !== ind);
+      setSelectedIndustries(remaining.length > 0 ? remaining : ['All']);
     } else {
-      setSelectedIndustries([...selectedIndustries, ind]);
+      setSelectedIndustries([...withoutAll, ind]);
     }
   };
 
   const toggleLocation = (loc: string) => {
-    if (selectedLocations.includes(loc)) {
-      if (selectedLocations.length > 1) {
-        setSelectedLocations(selectedLocations.filter((l) => l !== loc));
-      }
+    if (loc === 'All Locations' || loc === 'All') {
+      setSelectedLocations(['All Locations']);
+      return;
+    }
+    const withoutAll = selectedLocations.filter((l) => l !== 'All Locations' && l !== 'All');
+    if (withoutAll.includes(loc)) {
+      const remaining = withoutAll.filter((l) => l !== loc);
+      setSelectedLocations(remaining.length > 0 ? remaining : ['All Locations']);
     } else {
-      setSelectedLocations([...selectedLocations, loc]);
+      setSelectedLocations([...withoutAll, loc]);
     }
   };
 
@@ -117,11 +128,11 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
   const handleResetFilters = () => {
     setSelectedIndustries(['B2B SaaS']);
     setSelectedLocations(['United States']);
-    setSelectedSize('500 - 1000');
+    setSelectedSize('All');
     setKeywords('Salesforce, Cloud, Enterprise GTM, Expansion');
     setAdvancedFilters({
-      revenue: true,
-      funding: true,
+      revenue: false,
+      funding: false,
       growthRate: true,
       activelyHiring: true,
       techStack: true,
@@ -141,30 +152,21 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
     });
   };
 
-  // Compute active criteria summary
-  const activeCriteriaSummary = useMemo(() => {
-    const parts: string[] = [];
-    if (selectedIndustries.length > 0) parts.push(selectedIndustries.join(', '));
-    if (selectedLocations.length > 0) parts.push(selectedLocations.join(', '));
-    if (selectedSize) parts.push(`Size: ${selectedSize}`);
-    return parts.join(' · ');
-  }, [selectedIndustries, selectedLocations, selectedSize]);
-
   // Dynamic estimated reach computation
   const estimatedReach = useMemo(() => {
-    let base = 127;
-    if (selectedIndustries.length > 0) base = Math.round(base * (selectedIndustries.length / 8) + 15);
-    if (selectedLocations.length > 0) base = Math.round(base * (selectedLocations.length / 8) + 10);
-    if (selectedSize === '1 - 50') base = 42;
-    if (selectedSize === '51 - 200') base = 68;
-    if (selectedSize === '201 - 500') base = 85;
-    if (selectedSize === '500 - 1000') base = 127;
-    if (selectedSize === '1,000+') base = 94;
-    return Math.max(14, base);
-  }, [selectedIndustries, selectedLocations, selectedSize]);
+    let base = 32;
+    if (selectedIndustries.includes('All')) base = 32;
+    else base = Math.max(6, selectedIndustries.length * 6);
+    if (selectedSize === '1 - 50') base = 9;
+    if (selectedSize === '51 - 200') base = 8;
+    if (selectedSize === '201 - 500') base = 6;
+    if (selectedSize === '500 - 1000') base = 7;
+    if (selectedSize === '1,000+') base = 12;
+    return base;
+  }, [selectedIndustries, selectedSize]);
 
   return (
-    <div id="discover-view" className="p-8 max-w-7xl mx-auto space-y-6 pb-28 relative">
+    <div id="discover-view" className="p-8 max-w-7xl mx-auto space-y-6">
       {/* Search Header Banner */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
@@ -177,7 +179,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
           Find & Qualify High-Fit Accounts
         </h2>
         <p className="text-xs text-[#3F4943] max-w-2xl">
-          Search with natural language or refine your target ICP using multi-factor firmographics, live hiring velocity, and executive buying signals.
+          Discover enterprise leaders and breakout underdog tech companies with verified hiring velocity and executive trigger signals.
         </p>
       </div>
 
@@ -210,7 +212,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               }}
               rows={2}
               className="w-full p-4 pr-12 text-sm bg-[#F9F9F7] text-[#1a1c1b] border border-[#E5E5E1] rounded-xl focus:bg-white focus:border-[#005138] focus:ring-2 focus:ring-[#A4F3CC] transition-all outline-none resize-none font-medium leading-relaxed"
-              placeholder="e.g., Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps..."
+              placeholder="e.g., Breakout B2B SaaS underdog startups with <100 employees actively hiring..."
             />
             {prompt && (
               <button
@@ -224,7 +226,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
             )}
           </div>
 
-          {/* Top-Level Quick Launch Bar */}
+          {/* Unified Primary Search Action Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-[#F4F4F2]">
             <div className="text-[11px] text-[#8A8F98] flex items-center gap-1.5 self-start sm:self-center">
               <span>Press</span>
@@ -239,21 +241,21 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
             </div>
 
             <button
-              id="top-execute-search-btn"
+              id="primary-find-leads-btn"
               onClick={handleRunSearch}
               disabled={isAnalyzing}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Analyzing Accounts...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                  <Sparkles className="w-4 h-4 text-[#A4F3CC]" />
                   <span>Find & Analyze Leads</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                  <ArrowRight className="w-4 h-4 text-[#A4F3CC]" />
                 </>
               )}
             </button>
@@ -295,7 +297,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               </div>
               <button
                 onClick={handleResetFilters}
-                className="text-xs text-[#8A8F98] hover:text-[#005138] flex items-center gap-1 font-medium transition-colors"
+                className="text-xs text-[#8A8F98] hover:text-[#005138] flex items-center gap-1 font-medium transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Reset Parameters</span>
@@ -510,7 +512,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                       <CheckCircle2
                         className={`w-3.5 h-3.5 ${advancedFilters.techStack ? 'text-[#005138]' : 'text-[#8A8F98]'}`}
                       />
-                      <span>Enterprise CRM Detected</span>
+                      <span>Enterprise CRM / Tech Stack</span>
                     </button>
 
                     {/* Custom filters */}
@@ -560,35 +562,6 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               )}
             </div>
           </div>
-
-          {/* Prominent In-Flow Action Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-[#005138] text-white shadow-md">
-            <div>
-              <h4 className="text-base font-bold tracking-tight">Ready to Run Intelligence Engine</h4>
-              <p className="text-xs text-[#A4F3CC]">
-                {estimatedReach} accounts ready for real-time signal cross-referencing and scoring.
-              </p>
-            </div>
-            <button
-              id="execute-find-leads-btn"
-              onClick={handleRunSearch}
-              disabled={isAnalyzing}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-[#F9F9F7] text-[#005138] font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#005138]" />
-                  <span>Analyzing Accounts...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-[#005138]" />
-                  <span>Find & Analyze Leads</span>
-                  <ArrowRight className="w-4 h-4 text-[#005138]" />
-                </>
-              )}
-            </button>
-          </div>
         </div>
 
         {/* Right Column: Estimated Reach & Signal Monitor */}
@@ -620,12 +593,12 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-3 rounded-xl bg-[#F4F4F2] border border-[#E5E5E1]">
                   <p className="text-[11px] text-[#8A8F98]">High Priority</p>
-                  <p className="text-lg font-bold text-[#005138]">{Math.max(8, Math.round(estimatedReach * 0.28))} Leads</p>
+                  <p className="text-lg font-bold text-[#005138]">{Math.max(4, Math.round(estimatedReach * 0.4))} Leads</p>
                   <p className="text-[10px] text-[#237A52]">Score &gt; 90</p>
                 </div>
                 <div className="p-3 rounded-xl bg-[#F4F4F2] border border-[#E5E5E1]">
                   <p className="text-[11px] text-[#8A8F98]">Strong Fit</p>
-                  <p className="text-lg font-bold text-[#1a1c1b]">{Math.max(12, Math.round(estimatedReach * 0.48))} Leads</p>
+                  <p className="text-lg font-bold text-[#1a1c1b]">{Math.max(4, Math.round(estimatedReach * 0.5))} Leads</p>
                   <p className="text-[10px] text-[#3F4943]">Score 80-89</p>
                 </div>
               </div>
@@ -633,10 +606,10 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="space-y-2 pt-2 border-t border-[#E5E5E1]">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#3F4943]">ICP Fit Quality</span>
-                  <span className="font-bold text-[#005138]">92% Match</span>
+                  <span className="font-bold text-[#005138]">94% Match</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#EEEEEC] overflow-hidden">
-                  <div className="h-full bg-[#005138] rounded-full transition-all duration-300" style={{ width: '92%' }}></div>
+                  <div className="h-full bg-[#005138] rounded-full transition-all duration-300" style={{ width: '94%' }}></div>
                 </div>
               </div>
             </div>
@@ -664,104 +637,61 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Cloudflare, Inc.', domain: 'cloudflare.com' }} size="xs" />
-                    <span className="text-xs font-bold text-[#1a1c1b]">Cloudflare, Inc.</span>
+                    <CompanyLogo company={{ name: 'Resend', domain: 'resend.com' }} size="xs" />
+                    <span className="text-xs font-bold text-[#1a1c1b]">Resend</span>
                   </div>
-                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">18m ago</span>
+                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">12m ago</span>
                 </div>
                 <p className="text-xs text-[#3F4943]">
-                  SEC EDGAR filing and jobs API confirmed 42 new Enterprise SDR & Sales Engineering positions opened.
+                  Hiring surge: 6 new Full-Stack & Developer Experience roles added to official careers portal.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#A4F3CC] text-[#005138]">
-                    VERIFIED SEC.GOV
+                    VERIFIED CAREERS
                   </span>
-                  <span className="text-[10px] text-[#8A8F98]">SEC EDGAR #0001477333</span>
+                  <span className="text-[10px] text-[#8A8F98]">resend.com/careers</span>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Datadog, Inc.', domain: 'datadoghq.com' }} size="xs" />
-                    <span className="text-xs font-bold text-[#1a1c1b]">Datadog, Inc.</span>
+                    <CompanyLogo company={{ name: 'PostHog', domain: 'posthog.com' }} size="xs" />
+                    <span className="text-xs font-bold text-[#1a1c1b]">PostHog</span>
                   </div>
-                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">1h ago</span>
+                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">45m ago</span>
                 </div>
                 <p className="text-xs text-[#3F4943]">
-                  Actively recruiting 14+ Enterprise SDRs and RevOps managers across NYC and EMEA hubs.
+                  Reached $25M ARR milestone with 85 team members across US & Europe.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#A4F3CC] text-[#005138]">
-                    VERIFIED PORTAL
+                    VERIFIED PRODUCT
                   </span>
-                  <span className="text-[10px] text-[#8A8F98]">datadoghq.com/careers</span>
+                  <span className="text-[10px] text-[#8A8F98]">posthog.com/blog</span>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Snowflake Inc.', domain: 'snowflake.com' }} size="xs" />
-                    <span className="text-xs font-bold text-[#1a1c1b]">Snowflake Inc.</span>
+                    <CompanyLogo company={{ name: 'Clay', domain: 'clay.com' }} size="xs" />
+                    <span className="text-xs font-bold text-[#1a1c1b]">Clay</span>
                   </div>
-                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">3h ago</span>
+                  <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">2h ago</span>
                 </div>
                 <p className="text-xs text-[#3F4943]">
-                  Cortex AI enterprise engine adoption expanded across 1,800+ Fortune 500 accounts.
+                  Raised $62M Series B from Meritech Capital and Sequoia; actively hiring 14 Enterprise SDRs in NYC.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#A4F3CC] text-[#005138]">
-                    VERIFIED EDGAR
+                    VERIFIED SEC FORM D
                   </span>
-                  <span className="text-[10px] text-[#8A8F98]">SEC EDGAR #0001640147</span>
+                  <span className="text-[10px] text-[#8A8F98]">clay.com/careers</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Floating Sticky Action Dock (Always Visible at Viewport Bottom) */}
-      <div
-        id="floating-search-action-dock"
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md px-6 py-3.5 rounded-2xl border border-[#E5E5E1] shadow-2xl flex items-center justify-between gap-6 max-w-2xl w-[92%] sm:w-auto transition-all animate-in fade-in slide-in-from-bottom-3"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#237A52] animate-pulse"></div>
-          <div className="space-y-0.5">
-            <div className="text-xs font-bold text-[#1a1c1b] flex items-center gap-1.5">
-              <span>{estimatedReach} Accounts Match ICP</span>
-              <span className="text-[10px] font-semibold text-[#005138] bg-[#A4F3CC] px-1.5 py-0.2 rounded">
-                LIVE
-              </span>
-            </div>
-            <div className="text-[11px] text-[#8A8F98] truncate max-w-xs sm:max-w-sm">
-              {activeCriteriaSummary || 'All Verified Accounts'}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            id="floating-find-leads-btn"
-            onClick={handleRunSearch}
-            disabled={isAnalyzing}
-            className="px-5 py-2.5 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.03] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Analyzing...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-[#A4F3CC]" />
-                <span>Find & Analyze Leads</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#A4F3CC]" />
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

@@ -112,7 +112,18 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
         if (!hasHiring) return false;
       }
       if (adv.techStack) {
-        const hasEnterpriseStack = compTech.some((t) => t.includes('salesforce') || t.includes('cloud') || t.includes('kafka') || t.includes('kubernetes') || t.includes('datadog'));
+        const hasEnterpriseStack = compTech.some((t) =>
+          t.includes('salesforce') ||
+          t.includes('cloud') ||
+          t.includes('kafka') ||
+          t.includes('kubernetes') ||
+          t.includes('datadog') ||
+          t.includes('react') ||
+          t.includes('typescript') ||
+          t.includes('aws') ||
+          t.includes('hubspot') ||
+          t.includes('postgres')
+        );
         if (!hasEnterpriseStack) return false;
       }
 
@@ -131,7 +142,12 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
       // 7. Natural Language Query Filter
       if (qLower) {
         // Tokenize query words (skip common stop words)
-        const stopWords = new Set(['in', 'the', 'with', 'and', 'for', 'of', 'to', 'a', 'an', 'at', 'on', 'companies', 'startups', 'firms', 'accounts', 'leads']);
+        const stopWords = new Set([
+          'in', 'the', 'with', 'and', 'for', 'of', 'to', 'a', 'an', 'at', 'on',
+          'companies', 'startups', 'firms', 'accounts', 'leads', 'mid-market',
+          'underdog', 'underdogs', 'breakout', 'actively', 'hiring', 'tech', 'software',
+          'reps', 'sales', 'engineering'
+        ]);
         const tokens = qLower
           .split(/[\s,]+/)
           .map((t) => t.trim())
@@ -153,7 +169,7 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
             );
           }).length;
 
-          // Must match at least one specific token or 30% of search terms
+          // Must match at least one specific token if multiple specific tokens exist
           if (matchCount === 0 && tokens.length > 1) {
             return false;
           }

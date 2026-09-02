@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const query = (body.query || body.prompt || body.aiPrompt || '').trim();
     const filters = body.filters || body.currentFilters || {};
+    const existingCompanyIds = Array.isArray(body.existingCompanyIds) ? body.existingCompanyIds : [];
     const verifiedOnly = body.verifiedOnly !== false;
 
     // 1. Extract structured filter parameters
@@ -37,26 +38,54 @@ export async function POST(req: NextRequest) {
 
     // 2. Perform multi-dimensional search against the grounded provider
     const searchResult = await groundedLeadDiscoveryProvider.search(searchParams);
-    let matchedCompanies = searchResult.companies;
-    let modelUsed = 'LeadOS Grounded Engine';
+    let matchedCompanies = [...searchResult.companies];
+    
+    // Sort un-added accounts first if existingCompanyIds provided
+    if (existingCompanyIds.length > 0) {
+      matchedCompanies.sort((a, b) => {
+        const aHas = existingCompanyIds.includes(a.id);
+        const bHas = existingCompanyIds.includes(b.id);
+        if (!aHas && bHas) return -1;
+        if (aHas && !bHas) return 1;
+        return b.leadScore - a.leadScore;
+      });
+    }
+
+    let modelUsed = 'LeadOS Grounded Discovery Engine';
     let summary = `Found ${matchedCompanies.length} verified accounts matching your ICP criteria.`;
     let interpretedIntent = query || 'Structured ICP Matrix';
 
-    // 3. If Gemini is available, refine intent or discover specialized accounts for specific queries
-    if (query) {
+    // 3. If Gemini is available, discover new specialized / underdog accounts
+    if (query || existingCompanyIds.length > 0) {
       try {
-        const systemInstruction = `You are the LeadOS Intent & Lead Discovery Engine.
-You analyze B2B prospecting queries and return verified-structure JSON data.
+        const systemInstruction = `You are the LeadOS Lead Discovery & Verification Engine.
+You discover real, authentic B2B SaaS and tech companies (including breakout underdogs, modern developer tools, and mid-market leaders).
 JSON format:
 {
   "interpretedQuery": "Summary of search criteria",
-  "summary": "1-sentence overview of matched accounts and signals",
-  "discoveredLeads": []
+  "summary": "1-sentence overview of newly analyzed accounts",
+  "discoveredLeads": [
+    {
+      "name": "Company Name",
+      "domain": "company.com",
+      "industry": "B2B SaaS",
+      "subIndustry": "Developer Tools",
+      "location": "San Francisco, CA",
+      "country": "United States",
+      "size": "1 - 50",
+      "employeeCount": 45,
+      "revenue": "$10M+ ARR",
+      "funding": "Series A ($15M)",
+      "growthRate": "+100% YoY",
+      "technologies": ["React", "TypeScript", "AWS", "PostgreSQL"],
+      "hiringRoles": "6 Sales/Eng roles"
+    }
+  ]
 }`;
 
-        const promptText = `User Search Prompt: "${query}"
+        const promptText = `User Search Prompt: "${query || 'Breakout B2B SaaS underdog startups'}"
 Active Filter Criteria: ${JSON.stringify(filters)}
-Current Stored Match Count: ${matchedCompanies.length}`;
+Existing Discovered IDs (DO NOT DUPLICATE THESE DOMAINS): ${JSON.stringify(existingCompanyIds.slice(0, 20))}`;
 
         const geminiRes = await generateContentWithFallback({
           contents: promptText,
