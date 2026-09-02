@@ -50,6 +50,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Vercel / Turbopack
+# Vercel / Turbopack / TypeScript
 .vercel
 .turbo
+*.tsbuildinfo

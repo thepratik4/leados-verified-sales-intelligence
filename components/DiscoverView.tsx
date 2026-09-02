@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
   Search,
@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Zap,
   Globe,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import { SearchFilterState } from '@/lib/types';
 import CompanyLogo from './CompanyLogo';
@@ -30,6 +32,7 @@ const POPULAR_PROMPTS = [
   'Series B+ FinTech startups in New York expanding transatlantic operations',
   'Enterprise AI & MLOps infrastructure companies with >100 headcount',
   'Supply chain and logistics firms undergoing cloud ERP modernization',
+  'Cybersecurity companies in Western Europe with high growth',
 ];
 
 const INDUSTRIES = [
@@ -111,6 +114,21 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
     setCustomFilters(customFilters.filter((f) => f !== filter));
   };
 
+  const handleResetFilters = () => {
+    setSelectedIndustries(['B2B SaaS']);
+    setSelectedLocations(['United States']);
+    setSelectedSize('500 - 1000');
+    setKeywords('Salesforce, Cloud, Enterprise GTM, Expansion');
+    setAdvancedFilters({
+      revenue: true,
+      funding: true,
+      growthRate: true,
+      activelyHiring: true,
+      techStack: true,
+    });
+    setCustomFilters(['SOC2 Certified']);
+  };
+
   const handleRunSearch = () => {
     onExecuteSearch({
       aiPrompt: prompt,
@@ -123,15 +141,37 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
     });
   };
 
+  // Compute active criteria summary
+  const activeCriteriaSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (selectedIndustries.length > 0) parts.push(selectedIndustries.join(', '));
+    if (selectedLocations.length > 0) parts.push(selectedLocations.join(', '));
+    if (selectedSize) parts.push(`Size: ${selectedSize}`);
+    return parts.join(' · ');
+  }, [selectedIndustries, selectedLocations, selectedSize]);
+
+  // Dynamic estimated reach computation
+  const estimatedReach = useMemo(() => {
+    let base = 127;
+    if (selectedIndustries.length > 0) base = Math.round(base * (selectedIndustries.length / 8) + 15);
+    if (selectedLocations.length > 0) base = Math.round(base * (selectedLocations.length / 8) + 10);
+    if (selectedSize === '1 - 50') base = 42;
+    if (selectedSize === '51 - 200') base = 68;
+    if (selectedSize === '201 - 500') base = 85;
+    if (selectedSize === '500 - 1000') base = 127;
+    if (selectedSize === '1,000+') base = 94;
+    return Math.max(14, base);
+  }, [selectedIndustries, selectedLocations, selectedSize]);
+
   return (
-    <div id="discover-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <div id="discover-view" className="p-8 max-w-7xl mx-auto space-y-6 pb-28 relative">
       {/* Search Header Banner */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#A4F3CC] text-[#005138]">
             AI Prospecting Engine
           </span>
-          <span className="text-xs text-[#8A8F98]">· Updated 12 minutes ago</span>
+          <span className="text-xs text-[#8A8F98]">· Live Verified Registries & SEC Data</span>
         </div>
         <h2 className="text-2xl font-bold text-[#1a1c1b] tracking-tight">
           Find & Qualify High-Fit Accounts
@@ -157,34 +197,71 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
           <span className="text-[11px] text-[#8A8F98]">LeadOS v3.7 NLP Parser</span>
         </div>
 
-        <div className="relative">
-          <textarea
-            id="ai-search-prompt-input"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                handleRunSearch();
-              }
-            }}
-            rows={2}
-            className="w-full p-4 pr-12 text-sm bg-[#F9F9F7] text-[#1a1c1b] border border-[#E5E5E1] rounded-xl focus:bg-white focus:border-[#005138] focus:ring-2 focus:ring-[#A4F3CC] transition-all outline-none resize-none font-medium leading-relaxed"
-            placeholder="e.g., Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps..."
-          />
-          {prompt && (
+        <div className="space-y-3">
+          <div className="relative">
+            <textarea
+              id="ai-search-prompt-input"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  handleRunSearch();
+                }
+              }}
+              rows={2}
+              className="w-full p-4 pr-12 text-sm bg-[#F9F9F7] text-[#1a1c1b] border border-[#E5E5E1] rounded-xl focus:bg-white focus:border-[#005138] focus:ring-2 focus:ring-[#A4F3CC] transition-all outline-none resize-none font-medium leading-relaxed"
+              placeholder="e.g., Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps..."
+            />
+            {prompt && (
+              <button
+                id="clear-search-prompt-btn"
+                onClick={() => setPrompt('')}
+                className="absolute top-4 right-4 p-1 rounded-md text-[#8A8F98] hover:text-[#1a1c1b] hover:bg-[#EEEEEC] transition-colors"
+                title="Clear search prompt"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Top-Level Quick Launch Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-[#F4F4F2]">
+            <div className="text-[11px] text-[#8A8F98] flex items-center gap-1.5 self-start sm:self-center">
+              <span>Press</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[#EEEEEC] border border-[#D6D6D0] rounded">
+                ⌘ Enter
+              </kbd>
+              <span>or</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[#EEEEEC] border border-[#D6D6D0] rounded">
+                Ctrl Enter
+              </kbd>
+              <span>to launch discovery</span>
+            </div>
+
             <button
-              id="clear-search-prompt-btn"
-              onClick={() => setPrompt('')}
-              className="absolute top-4 right-4 p-1 rounded-md text-[#8A8F98] hover:text-[#1a1c1b] hover:bg-[#EEEEEC] transition-colors"
-              title="Clear search prompt"
+              id="top-execute-search-btn"
+              onClick={handleRunSearch}
+              disabled={isAnalyzing}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Analyzing Accounts...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                  <span>Find & Analyze Leads</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                </>
+              )}
             </button>
-          )}
+          </div>
         </div>
 
         {/* Suggested Prompts */}
-        <div className="space-y-2">
+        <div className="space-y-2 pt-2 border-t border-[#E5E5E1]">
           <div className="text-[11px] font-semibold text-[#8A8F98] uppercase tracking-wider">
             Quick Prompts
           </div>
@@ -194,7 +271,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                 key={idx}
                 id={`preset-prompt-${idx}`}
                 onClick={() => setPrompt(p)}
-                className="text-left px-3 py-1.5 rounded-lg bg-[#F4F4F2] hover:bg-[#EEEEEC] border border-[#E5E5E1] text-xs text-[#3F4943] hover:text-[#1a1c1b] transition-all truncate max-w-md flex items-center gap-1.5"
+                className="text-left px-3 py-1.5 rounded-lg bg-[#F4F4F2] hover:bg-[#EEEEEC] border border-[#E5E5E1] text-xs text-[#3F4943] hover:text-[#1a1c1b] transition-all truncate max-w-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-[#005138] shrink-0" />
                 <span className="truncate">{p}</span>
@@ -216,7 +293,13 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                   Structured ICP Parameters
                 </h3>
               </div>
-              <span className="text-xs text-[#8A8F98]">Lead Matrix Matrix v3.7</span>
+              <button
+                onClick={handleResetFilters}
+                className="text-xs text-[#8A8F98] hover:text-[#005138] flex items-center gap-1 font-medium transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Parameters</span>
+              </button>
             </div>
 
             {/* Bento Grid */}
@@ -235,7 +318,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                         key={ind}
                         id={`industry-chip-${ind.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                         onClick={() => toggleIndustry(ind)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#005138] text-white shadow-xs font-semibold'
                             : 'bg-[#F4F4F2] text-[#3F4943] hover:bg-[#EEEEEC] border border-[#E5E5E1]'
@@ -262,7 +345,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                         key={loc}
                         id={`location-chip-${loc.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                         onClick={() => toggleLocation(loc)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#005138] text-white shadow-xs font-semibold'
                             : 'bg-[#F4F4F2] text-[#3F4943] hover:bg-[#EEEEEC] border border-[#E5E5E1]'
@@ -289,7 +372,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                         key={sz}
                         id={`size-chip-${sz.replace(/[^a-z0-9]/g, '-')}`}
                         onClick={() => setSelectedSize(sz)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#005138] text-white shadow-xs font-semibold'
                             : 'bg-[#F4F4F2] text-[#3F4943] hover:bg-[#EEEEEC] border border-[#E5E5E1]'
@@ -312,7 +395,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                   type="text"
                   value={keywords}
                   onChange={(e) => setKeywords(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[#F9F9F7] text-[#1a1c1b] border border-[#E5E5E1] rounded-lg focus:bg-white focus:border-[#005138] focus:ring-1 focus:ring-[#A4F3CC] outline-none"
+                  className="w-full px-3 py-2 text-xs bg-[#F9F9F7] text-[#1a1c1b] border border-[#E5E5E1] rounded-lg focus:bg-white focus:border-[#005138] focus:ring-1 focus:ring-[#A4F3CC] outline-none font-medium"
                   placeholder="e.g. Salesforce, Cloud, SOC2, Modern GTM"
                 />
               </div>
@@ -324,7 +407,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                 <button
                   id="toggle-advanced-filters-btn"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex items-center gap-2 text-xs font-bold text-[#005138] hover:text-[#176B4D]"
+                  className="flex items-center gap-2 text-xs font-bold text-[#005138] hover:text-[#176B4D] cursor-pointer"
                 >
                   <span>Advanced Criteria Filters</span>
                   <span className="text-[10px] text-[#8A8F98]">
@@ -341,7 +424,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                       onClick={() =>
                         setAdvancedFilters({ ...advancedFilters, revenue: !advancedFilters.revenue })
                       }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                         advancedFilters.revenue
                           ? 'bg-[#A4F3CC] border-[#005138] text-[#005138] font-semibold'
                           : 'bg-white border-[#E5E5E1] text-[#3F4943]'
@@ -358,7 +441,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                       onClick={() =>
                         setAdvancedFilters({ ...advancedFilters, funding: !advancedFilters.funding })
                       }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                         advancedFilters.funding
                           ? 'bg-[#A4F3CC] border-[#005138] text-[#005138] font-semibold'
                           : 'bg-white border-[#E5E5E1] text-[#3F4943]'
@@ -378,7 +461,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                           growthRate: !advancedFilters.growthRate,
                         })
                       }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                         advancedFilters.growthRate
                           ? 'bg-[#A4F3CC] border-[#005138] text-[#005138] font-semibold'
                           : 'bg-white border-[#E5E5E1] text-[#3F4943]'
@@ -398,7 +481,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                           activelyHiring: !advancedFilters.activelyHiring,
                         })
                       }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                         advancedFilters.activelyHiring
                           ? 'bg-[#A4F3CC] border-[#005138] text-[#005138] font-semibold'
                           : 'bg-white border-[#E5E5E1] text-[#3F4943]'
@@ -418,7 +501,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                           techStack: !advancedFilters.techStack,
                         })
                       }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
                         advancedFilters.techStack
                           ? 'bg-[#A4F3CC] border-[#005138] text-[#005138] font-semibold'
                           : 'bg-white border-[#E5E5E1] text-[#3F4943]'
@@ -439,7 +522,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                         <span>{cf}</span>
                         <button
                           onClick={() => removeCustomFilter(cf)}
-                          className="hover:text-[#B42318]"
+                          className="hover:text-[#B42318] cursor-pointer"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -458,7 +541,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                         />
                         <button
                           type="submit"
-                          className="px-2 py-1 text-xs rounded bg-[#005138] text-white font-medium"
+                          className="px-2 py-1 text-xs rounded bg-[#005138] text-white font-medium cursor-pointer"
                         >
                           Add
                         </button>
@@ -467,7 +550,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
                       <button
                         id="add-custom-filter-btn"
                         onClick={() => setIsAddingCustom(true)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-dashed border-[#D6D6D0] text-[#3F4943] hover:border-[#005138] hover:text-[#005138] transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-dashed border-[#D6D6D0] text-[#3F4943] hover:border-[#005138] hover:text-[#005138] transition-colors cursor-pointer"
                       >
                         + Add Custom Filter
                       </button>
@@ -478,23 +561,32 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
             </div>
           </div>
 
-          {/* Prominent Action Bar */}
+          {/* Prominent In-Flow Action Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-[#005138] text-white shadow-md">
             <div>
               <h4 className="text-base font-bold tracking-tight">Ready to Run Intelligence Engine</h4>
               <p className="text-xs text-[#A4F3CC]">
-                127 accounts ready for real-time signal cross-referencing and scoring.
+                {estimatedReach} accounts ready for real-time signal cross-referencing and scoring.
               </p>
             </div>
             <button
               id="execute-find-leads-btn"
               onClick={handleRunSearch}
               disabled={isAnalyzing}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-[#F9F9F7] text-[#005138] font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-[#F9F9F7] text-[#005138] font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-[#005138]" />
-              <span>{isAnalyzing ? 'Analyzing Accounts...' : 'Find & Analyze Leads'}</span>
-              <ArrowRight className="w-4 h-4 text-[#005138]" />
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#005138]" />
+                  <span>Analyzing Accounts...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-[#005138]" />
+                  <span>Find & Analyze Leads</span>
+                  <ArrowRight className="w-4 h-4 text-[#005138]" />
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -517,7 +609,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
 
             <div className="space-y-3">
               <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold text-[#1a1c1b] tracking-tight">127</span>
+                <span className="text-3xl font-extrabold text-[#1a1c1b] tracking-tight">{estimatedReach}</span>
                 <span className="text-xs font-medium text-[#237A52] flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5" />
                   <span>+18 new this week</span>
@@ -528,12 +620,12 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-3 rounded-xl bg-[#F4F4F2] border border-[#E5E5E1]">
                   <p className="text-[11px] text-[#8A8F98]">High Priority</p>
-                  <p className="text-lg font-bold text-[#005138]">32 Leads</p>
+                  <p className="text-lg font-bold text-[#005138]">{Math.max(8, Math.round(estimatedReach * 0.28))} Leads</p>
                   <p className="text-[10px] text-[#237A52]">Score &gt; 90</p>
                 </div>
                 <div className="p-3 rounded-xl bg-[#F4F4F2] border border-[#E5E5E1]">
                   <p className="text-[11px] text-[#8A8F98]">Strong Fit</p>
-                  <p className="text-lg font-bold text-[#1a1c1b]">58 Leads</p>
+                  <p className="text-lg font-bold text-[#1a1c1b]">{Math.max(12, Math.round(estimatedReach * 0.48))} Leads</p>
                   <p className="text-[10px] text-[#3F4943]">Score 80-89</p>
                 </div>
               </div>
@@ -541,10 +633,10 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="space-y-2 pt-2 border-t border-[#E5E5E1]">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#3F4943]">ICP Fit Quality</span>
-                  <span className="font-bold text-[#005138]">89% Match</span>
+                  <span className="font-bold text-[#005138]">92% Match</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#EEEEEC] overflow-hidden">
-                  <div className="h-full bg-[#005138] rounded-full" style={{ width: '89%' }}></div>
+                  <div className="h-full bg-[#005138] rounded-full transition-all duration-300" style={{ width: '92%' }}></div>
                 </div>
               </div>
             </div>
@@ -572,7 +664,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Cloudflare, Inc.', domain: 'cloudflare.com', badgeColor: '#F6821F' }} size="xs" />
+                    <CompanyLogo company={{ name: 'Cloudflare, Inc.', domain: 'cloudflare.com' }} size="xs" />
                     <span className="text-xs font-bold text-[#1a1c1b]">Cloudflare, Inc.</span>
                   </div>
                   <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">18m ago</span>
@@ -591,7 +683,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Datadog, Inc.', domain: 'datadoghq.com', badgeColor: '#632CA6' }} size="xs" />
+                    <CompanyLogo company={{ name: 'Datadog, Inc.', domain: 'datadoghq.com' }} size="xs" />
                     <span className="text-xs font-bold text-[#1a1c1b]">Datadog, Inc.</span>
                   </div>
                   <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">1h ago</span>
@@ -610,7 +702,7 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E5E1] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CompanyLogo company={{ name: 'Snowflake Inc.', domain: 'snowflake.com', badgeColor: '#29B5E8' }} size="xs" />
+                    <CompanyLogo company={{ name: 'Snowflake Inc.', domain: 'snowflake.com' }} size="xs" />
                     <span className="text-xs font-bold text-[#1a1c1b]">Snowflake Inc.</span>
                   </div>
                   <span className="text-[10px] font-medium text-[#237A52] bg-[#A4F3CC]/50 px-1.5 py-0.5 rounded">3h ago</span>
@@ -627,6 +719,49 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Floating Sticky Action Dock (Always Visible at Viewport Bottom) */}
+      <div
+        id="floating-search-action-dock"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md px-6 py-3.5 rounded-2xl border border-[#E5E5E1] shadow-2xl flex items-center justify-between gap-6 max-w-2xl w-[92%] sm:w-auto transition-all animate-in fade-in slide-in-from-bottom-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#237A52] animate-pulse"></div>
+          <div className="space-y-0.5">
+            <div className="text-xs font-bold text-[#1a1c1b] flex items-center gap-1.5">
+              <span>{estimatedReach} Accounts Match ICP</span>
+              <span className="text-[10px] font-semibold text-[#005138] bg-[#A4F3CC] px-1.5 py-0.2 rounded">
+                LIVE
+              </span>
+            </div>
+            <div className="text-[11px] text-[#8A8F98] truncate max-w-xs sm:max-w-sm">
+              {activeCriteriaSummary || 'All Verified Accounts'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            id="floating-find-leads-btn"
+            onClick={handleRunSearch}
+            disabled={isAnalyzing}
+            className="px-5 py-2.5 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.03] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                <span>Find & Analyze Leads</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#A4F3CC]" />
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

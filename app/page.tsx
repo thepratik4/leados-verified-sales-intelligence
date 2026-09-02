@@ -106,7 +106,7 @@ export default function LeadOSApp() {
   const handleAnalysisCompleted = () => {
     setIsAnalyzingOpen(false);
     setCurrentTab('RESULTS');
-    showToast('Ranked 127 high-intent accounts with live business signals.');
+    showToast(`Ranked ${companies.length} qualified accounts with verified business signals.`);
   };
 
   // 2. Lead Selection & Dossier
