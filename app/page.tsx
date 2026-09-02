@@ -50,6 +50,7 @@ export default function LeadOSApp() {
 
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lastSearchSummary, setLastSearchSummary] = useState<string>('');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -70,7 +71,8 @@ export default function LeadOSApp() {
 
   // 1. Handle Search Trigger from Discover Screen
   const handleInitiateSearch = async (query: string, filters: any) => {
-    setAnalyzingSummary(`Searching "${query || 'High-Growth Tech Accounts'}" across live job boards, SEC filings & firmographics...`);
+    const queryLabel = query || (filters?.industries?.length ? `${filters.industries.join(', ')} (${filters.locations?.join(', ') || 'Global'})` : 'High-Growth Tech Accounts');
+    setAnalyzingSummary(`Searching "${queryLabel}" across live job boards, SEC filings & firmographics...`);
     setIsAnalyzingOpen(true);
 
     try {
@@ -81,8 +83,9 @@ export default function LeadOSApp() {
       });
       const data = await res.json();
 
-      if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+      if (data.results && Array.isArray(data.results)) {
         setCompanies(data.results);
+        setLastSearchSummary(data.summary || `Found ${data.results.length} verified accounts matching "${queryLabel}"`);
       }
     } catch (e) {
       console.error('Search API error', e);
@@ -106,7 +109,7 @@ export default function LeadOSApp() {
   const handleAnalysisCompleted = () => {
     setIsAnalyzingOpen(false);
     setCurrentTab('RESULTS');
-    showToast(`Ranked ${companies.length} qualified accounts with verified business signals.`);
+    showToast(`Ranked verified accounts matching your search criteria.`);
   };
 
   // 2. Lead Selection & Dossier
@@ -311,6 +314,8 @@ export default function LeadOSApp() {
               onToggleSaveCompany={handleToggleSaveCompany}
               onAddToList={handleOpenAddToList}
               onExportCsv={handleExportCsv}
+              searchSummary={lastSearchSummary}
+              onNavigateDiscover={() => setCurrentTab('DISCOVER')}
             />
           )}
 

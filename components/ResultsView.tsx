@@ -32,6 +32,8 @@ interface ResultsViewProps {
   onToggleSaveCompany: (companyId: string) => void;
   onAddToList: (companyIds: string[]) => void;
   onExportCsv: (selectedOnly?: boolean) => void;
+  searchSummary?: string;
+  onNavigateDiscover?: () => void;
 }
 
 export default function ResultsView({
@@ -40,6 +42,8 @@ export default function ResultsView({
   onToggleSaveCompany,
   onAddToList,
   onExportCsv,
+  searchSummary,
+  onNavigateDiscover,
 }: ResultsViewProps) {
   const [activeTier, setActiveTier] = useState<'ALL' | 'HIGH_PRIORITY' | 'STRONG_FIT' | 'POTENTIAL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +148,24 @@ export default function ResultsView({
           )}
         </div>
       </div>
+
+      {/* Active Search Query / Criteria Banner */}
+      {searchSummary && (
+        <div className="bg-[#EBFBF4] border border-[#A4F3CC] p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-[#005138]">
+            <Sparkles className="w-4 h-4 text-[#005138] shrink-0" />
+            <span className="font-semibold">{searchSummary}</span>
+          </div>
+          {onNavigateDiscover && (
+            <button
+              onClick={onNavigateDiscover}
+              className="text-xs font-bold text-[#005138] hover:underline shrink-0 cursor-pointer"
+            >
+              Refine Search Criteria →
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Control Filter Bar */}
       <div className="bg-white rounded-2xl border border-[#E5E5E1] p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
