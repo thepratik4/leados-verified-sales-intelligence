@@ -140,8 +140,9 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
       }
 
       // 7. Natural Language Query Filter
-      if (qLower) {
-        // Tokenize query words (skip common stop words)
+      // If no explicit industry or location chips are set, use query tokens to filter
+      // If explicit chips are set, use query tokens for relevance scoring rather than hard elimination
+      if (qLower && selectedIndustries.length === 0 && selectedLocations.length === 0) {
         const stopWords = new Set([
           'in', 'the', 'with', 'and', 'for', 'of', 'to', 'a', 'an', 'at', 'on',
           'companies', 'startups', 'firms', 'accounts', 'leads', 'mid-market',
@@ -169,7 +170,6 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
             );
           }).length;
 
-          // Must match at least one specific token if multiple specific tokens exist
           if (matchCount === 0 && tokens.length > 1) {
             return false;
           }
@@ -186,10 +186,29 @@ export class GroundedLeadDiscoveryProvider implements LeadDiscoveryProvider {
       const compLoc = getFieldValue(c.location).text.toLowerCase();
       const compEmployees = c.employeeCount?.value || 0;
 
-      if (selectedIndustries.some((ind) => compInd.includes(ind))) dynamicBonus += 4;
-      if (selectedLocations.some((loc) => compLoc.includes(loc))) dynamicBonus += 3;
-      if (selectedSize === '500 - 1000' && compEmployees >= 500 && compEmployees <= 1000) dynamicBonus += 3;
-      if (selectedSize === '1,000+' && compEmployees >= 1000) dynamicBonus += 3;
+      if (selectedIndustries.some((ind) => ind !== 'all' && compInd.includes(ind))) dynamicBonus += 5;
+      if (selectedLocations.some((loc) => loc !== 'all' && loc !== 'all locations' && compLoc.includes(loc))) dynamicBonus += 4;
+      if (selectedSize === '1 - 50' && compEmployees <= 50) dynamicBonus += 4;
+      if (selectedSize === '51 - 200' && compEmployees >= 51 && compEmployees <= 200) dynamicBonus += 4;
+      if (selectedSize === '500 - 1000' && compEmployees >= 500 && compEmployees <= 1000) dynamicBonus += 4;
+      if (selectedSize === '1,000+' && compEmployees >= 1000) dynamicBonus += 4;
+
+      // Natural language query relevance bonus
+      if (qLower) {
+        const compText = `${c.name} ${c.domain} ${compInd} ${getFieldValue(c.subIndustry).text} ${compLoc} ${c.whyThisLead}`.toLowerCase();
+        if (qLower.includes('underdog') || qLower.includes('breakout') || qLower.includes('startup')) {
+          if (compEmployees < 150) dynamicBonus += 6;
+        }
+        if (qLower.includes('mid-market') && compEmployees >= 500 && compEmployees <= 1000) {
+          dynamicBonus += 5;
+        }
+        if (qLower.includes('enterprise') && compEmployees >= 1000) {
+          dynamicBonus += 5;
+        }
+        if (qLower.includes('hiring') && c.businessSignals?.some((s) => s.signalType === 'hiring')) {
+          dynamicBonus += 4;
+        }
+      }
 
       const dynamicScore = Math.min(99, Math.max(72, c.leadScore + dynamicBonus));
       const tier = dynamicScore >= 90 ? 'HIGH_PRIORITY' : dynamicScore >= 80 ? 'STRONG_FIT' : 'POTENTIAL';

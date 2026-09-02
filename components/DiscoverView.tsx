@@ -28,12 +28,48 @@ interface DiscoverViewProps {
 }
 
 const POPULAR_PROMPTS = [
-  'Breakout B2B SaaS & underdog startups with <100 employees actively hiring',
-  'Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps',
-  'Series B+ FinTech startups in New York expanding transatlantic operations',
-  'High-growth AI & Developer Infrastructure startups with modern GTM stack',
-  'Supply chain and logistics firms undergoing cloud ERP modernization',
-  'Cybersecurity companies with >30% YoY growth',
+  {
+    title: 'Breakout B2B SaaS & underdog startups with <100 employees actively hiring',
+    industry: 'B2B SaaS',
+    size: '1 - 50',
+    location: 'United States',
+  },
+  {
+    title: 'Mid-market SaaS companies in the US with 500-1000 employees actively hiring sales reps',
+    industry: 'B2B SaaS',
+    size: '500 - 1000',
+    location: 'United States',
+  },
+  {
+    title: 'Series B+ FinTech startups in New York expanding transatlantic operations',
+    industry: 'FinTech',
+    size: 'All',
+    location: 'New York, NY',
+  },
+  {
+    title: 'High-growth AI & Developer Infrastructure startups with modern GTM stack',
+    industry: 'AI / Cloud',
+    size: 'All',
+    location: 'San Francisco, CA',
+  },
+  {
+    title: 'Supply chain and logistics firms undergoing cloud ERP modernization',
+    industry: 'Supply Chain',
+    size: 'All',
+    location: 'United States',
+  },
+  {
+    title: 'Cybersecurity companies with >30% YoY growth',
+    industry: 'Cybersecurity',
+    size: 'All',
+    location: 'United States',
+  },
+  {
+    title: 'Aerospace & Defense leaders scaling autonomous systems',
+    industry: 'Aerospace & Defense',
+    size: 'All',
+    location: 'United States',
+  },
 ];
 
 const INDUSTRIES = [
@@ -272,11 +308,16 @@ export default function DiscoverView({ onExecuteSearch, isAnalyzing }: DiscoverV
               <button
                 key={idx}
                 id={`preset-prompt-${idx}`}
-                onClick={() => setPrompt(p)}
+                onClick={() => {
+                  setPrompt(p.title);
+                  if (p.industry) setSelectedIndustries([p.industry]);
+                  if (p.location) setSelectedLocations([p.location]);
+                  if (p.size) setSelectedSize(p.size);
+                }}
                 className="text-left px-3 py-1.5 rounded-lg bg-[#F4F4F2] hover:bg-[#EEEEEC] border border-[#E5E5E1] text-xs text-[#3F4943] hover:text-[#1a1c1b] transition-all truncate max-w-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-[#005138] shrink-0" />
-                <span className="truncate">{p}</span>
+                <span className="truncate">{p.title}</span>
               </button>
             ))}
           </div>

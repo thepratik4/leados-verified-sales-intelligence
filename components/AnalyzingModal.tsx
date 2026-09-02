@@ -16,44 +16,44 @@ export default function AnalyzingModal({
   querySummary,
   isLoading = false,
 }: AnalyzingModalProps) {
-  const [progress, setProgress] = useState(10);
+  const [progress, setProgress] = useState(15);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Whenever modal opens, ALWAYS reset progress to starting state
+  // Whenever modal opens, reset progress to starting state and animate smoothly
   useEffect(() => {
     if (!isOpen) {
-      setProgress(10);
+      setProgress(15);
       return;
     }
 
-    // Reset progress to 10 on open
-    setProgress(10);
+    setProgress(15);
 
-    // Progressive simulated lead synthesis steps
+    // Fast, responsive lead synthesis animation (~1.2s total)
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev < 35) return prev + 12;
-        if (prev < 70) return prev + 8;
-        if (prev < 90) return prev + 4;
-        // Hold at 92% if actual API fetch is still in progress
+        if (prev < 40) return prev + 15;
+        if (prev < 75) return prev + 12;
+        if (prev < 90) return prev + 6;
+        // Hold at 92% only if actual API fetch is taking longer
         if (isLoading && prev >= 90) return 92;
+        if (!isLoading && prev >= 90) return 100;
         return prev;
       });
-    }, 180);
+    }, 110);
 
     return () => clearInterval(interval);
   }, [isOpen, isLoading]);
 
-  // When loading finishes (or when progress reaches 90+ without loading), complete to 100%
+  // When loading finishes and progress reaches completion, transition out smoothly
   useEffect(() => {
     if (!isOpen) return;
 
-    if (!isLoading && progress >= 85) {
+    if (!isLoading && progress >= 90) {
       setProgress(100);
       const timer = setTimeout(() => {
         onCompleteRef.current();
-      }, 400);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen, isLoading, progress]);
@@ -104,7 +104,7 @@ export default function AnalyzingModal({
           </div>
           <div className="w-full h-2.5 bg-[#EEEEEC] rounded-full overflow-hidden p-0.5">
             <div
-              className="h-full bg-gradient-to-r from-[#176B4D] to-[#005138] rounded-full transition-all duration-300 ease-out"
+              className="h-full bg-gradient-to-r from-[#176B4D] to-[#005138] rounded-full transition-all duration-200 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
