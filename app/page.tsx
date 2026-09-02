@@ -52,11 +52,75 @@ export default function LeadOSApp() {
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSearchSummary, setLastSearchSummary] = useState<string>('');
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Load persisted state from browser localStorage on client mount
+  useEffect(() => {
+    try {
+      const storedCompanies = localStorage.getItem('leados_companies_v1');
+      if (storedCompanies) {
+        const parsed = JSON.parse(storedCompanies);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCompanies(parsed);
+        }
+      }
+
+      const storedLists = localStorage.getItem('leados_cohort_lists_v1');
+      if (storedLists) {
+        const parsed = JSON.parse(storedLists);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCohortLists(parsed);
+        }
+      }
+
+      const storedActivities = localStorage.getItem('leados_activities_v1');
+      if (storedActivities) {
+        const parsed = JSON.parse(storedActivities);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setActivityEvents(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read from localStorage', e);
+    } finally {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Sync companies to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_companies_v1', JSON.stringify(companies));
+    } catch (e) {
+      console.warn('Could not save companies to localStorage', e);
+    }
+  }, [companies, isHydrated]);
+
+  // Sync cohort lists to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_cohort_lists_v1', JSON.stringify(cohortLists));
+    } catch (e) {
+      console.warn('Could not save lists to localStorage', e);
+    }
+  }, [cohortLists, isHydrated]);
+
+  // Sync activity events to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_activities_v1', JSON.stringify(activityEvents));
+    } catch (e) {
+      console.warn('Could not save activities to localStorage', e);
+    }
+  }, [activityEvents, isHydrated]);
 
   // Keyboard shortcut ⌘K listener
   useEffect(() => {
