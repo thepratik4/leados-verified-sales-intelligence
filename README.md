@@ -7,7 +7,7 @@
 ---
 
 ## 🚀 Live Demo & Deployment
-- **Live Vercel Application**: *(Add your Vercel URL here)*
+- **Live Vercel Application**: https://leados-verified-sales-intelligence.vercel.app/
 - **GitHub Repository**: [https://github.com/thepratik4/leados-verified-sales-intelligence.git](https://github.com/thepratik4/leados-verified-sales-intelligence.git)
 - **Video Walkthrough (2 Mins)**: *(Add your Loom/YouTube link here)*
 
