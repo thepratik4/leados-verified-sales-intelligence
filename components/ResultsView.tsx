@@ -21,6 +21,7 @@ import {
   TrendingUp,
   ShieldCheck,
   Zap,
+  Trash2,
 } from 'lucide-react';
 import { CompanyLead } from '@/lib/types';
 import { getFieldValue, getVerificationBadge } from '@/lib/provenance-utils';
@@ -34,6 +35,8 @@ interface ResultsViewProps {
   onExportCsv: (selectedOnly?: boolean) => void;
   searchSummary?: string;
   onNavigateDiscover?: () => void;
+  onDeleteCompany?: (companyId: string) => void;
+  onDeleteSelectedCompanies?: (companyIds: string[]) => void;
 }
 
 export default function ResultsView({
@@ -44,6 +47,8 @@ export default function ResultsView({
   onExportCsv,
   searchSummary,
   onNavigateDiscover,
+  onDeleteCompany,
+  onDeleteSelectedCompanies,
 }: ResultsViewProps) {
   const [activeTier, setActiveTier] = useState<'ALL' | 'HIGH_PRIORITY' | 'STRONG_FIT' | 'POTENTIAL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,14 +142,30 @@ export default function ResultsView({
           </button>
 
           {selectedIds.length > 0 && (
-            <button
-              id="results-add-selected-to-list-btn"
-              onClick={() => onAddToList(selectedIds)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-xs font-bold text-white shadow-xs transition-colors"
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-[#A4F3CC]" />
-              <span>Add Selected ({selectedIds.length})</span>
-            </button>
+            <>
+              <button
+                id="results-delete-selected-btn"
+                onClick={() => {
+                  if (onDeleteSelectedCompanies) {
+                    onDeleteSelectedCompanies(selectedIds);
+                  }
+                  setSelectedIds([]);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Selected ({selectedIds.length})</span>
+              </button>
+
+              <button
+                id="results-add-selected-to-list-btn"
+                onClick={() => onAddToList(selectedIds)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#005138] hover:bg-[#176B4D] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+              >
+                <FolderPlus className="w-3.5 h-3.5 text-[#A4F3CC]" />
+                <span>Add Selected ({selectedIds.length})</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -398,22 +419,33 @@ export default function ResultsView({
                       {/* Action buttons */}
                       <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
+                          {onDeleteCompany && (
+                            <button
+                              id={`delete-company-${company.id}`}
+                              onClick={() => onDeleteCompany(company.id)}
+                              className="p-2 rounded-lg bg-white border border-[#E5E5E1] text-[#8A8F98] hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           <button
                             id={`save-company-${company.id}`}
                             onClick={() => onToggleSaveCompany(company.id)}
-                            className={`p-2 rounded-lg border transition-colors ${
+                            className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                               company.status === 'SAVED'
                                 ? 'bg-[#005138] text-white border-[#005138]'
                                 : 'bg-white text-[#8A8F98] border-[#E5E5E1] hover:text-[#005138]'
                             }`}
-                            title="Save Lead"
+                            title={company.status === 'SAVED' ? 'Remove from Saved' : 'Save Lead'}
                           >
                             <Bookmark className="w-3.5 h-3.5" />
                           </button>
 
                           <button
                             onClick={() => onSelectCompany(company)}
-                            className="p-2 rounded-lg bg-white border border-[#E5E5E1] text-[#3F4943] hover:bg-[#F4F4F2] hover:text-[#005138]"
+                            className="p-2 rounded-lg bg-white border border-[#E5E5E1] text-[#3F4943] hover:bg-[#F4F4F2] hover:text-[#005138] transition-colors cursor-pointer"
                             title="View Dossier"
                           >
                             <ChevronRight className="w-4 h-4" />

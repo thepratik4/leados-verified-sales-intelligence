@@ -52,11 +52,80 @@ export default function LeadOSApp() {
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSearchSummary, setLastSearchSummary] = useState<string>('');
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Load persisted state and respect deleted IDs from browser localStorage on client mount
+  useEffect(() => {
+    try {
+      const storedDeleted = localStorage.getItem('leados_deleted_ids_v2');
+      const deletedSet = new Set(storedDeleted ? JSON.parse(storedDeleted) : []);
+
+      const storedCompanies = localStorage.getItem('leados_companies_v2');
+      if (storedCompanies) {
+        const parsed = JSON.parse(storedCompanies);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCompanies(parsed.filter((c: CompanyLead) => !deletedSet.has(c.id)));
+        }
+      } else if (deletedSet.size > 0) {
+        setCompanies(INITIAL_COMPANIES.filter((c) => !deletedSet.has(c.id)));
+      }
+
+      const storedLists = localStorage.getItem('leados_cohort_lists_v2');
+      if (storedLists) {
+        const parsed = JSON.parse(storedLists);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCohortLists(parsed);
+        }
+      }
+
+      const storedActivities = localStorage.getItem('leados_activities_v2');
+      if (storedActivities) {
+        const parsed = JSON.parse(storedActivities);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setActivityEvents(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read from localStorage', e);
+    } finally {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Sync companies to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_companies_v2', JSON.stringify(companies));
+    } catch (e) {
+      console.warn('Could not save companies to localStorage', e);
+    }
+  }, [companies, isHydrated]);
+
+  // Sync cohort lists to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_cohort_lists_v2', JSON.stringify(cohortLists));
+    } catch (e) {
+      console.warn('Could not save lists to localStorage', e);
+    }
+  }, [cohortLists, isHydrated]);
+
+  // Sync activity events to localStorage
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem('leados_activities_v2', JSON.stringify(activityEvents));
+    } catch (e) {
+      console.warn('Could not save activities to localStorage', e);
+    }
+  }, [activityEvents, isHydrated]);
 
   // Keyboard shortcut ⌘K listener
   useEffect(() => {
@@ -217,6 +286,90 @@ export default function LeadOSApp() {
     showToast('Cohort list removed');
   };
 
+  // 5b. Delete Single Lead
+  const handleDeleteCompany = (companyId: string) => {
+    const target = companies.find((c) => c.id === companyId);
+    
+    // Save to deleted IDs blacklist immediately
+    try {
+      const storedDeleted = localStorage.getItem('leados_deleted_ids_v2');
+      const deletedArr: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
+      if (!deletedArr.includes(companyId)) {
+        deletedArr.push(companyId);
+        localStorage.setItem('leados_deleted_ids_v2', JSON.stringify(deletedArr));
+      }
+    } catch (e) {
+      console.warn('Error updating deleted IDs', e);
+    }
+
+    setCompanies((prev) => {
+      const updated = prev.filter((c) => c.id !== companyId);
+      try {
+        localStorage.setItem('leados_companies_v2', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (selectedCompany?.id === companyId) {
+      setSelectedCompany(null);
+      setCurrentTab('RESULTS');
+    }
+    showToast(`Removed "${target?.name || 'Lead'}" from pipeline`);
+
+    // Add activity event for audit log
+    const newEvent: ActivityEvent = {
+      id: `act-${Date.now()}`,
+      title: `Deleted lead: ${target?.name || companyId}`,
+      description: `Removed account from active prospecting pipeline.`,
+      time: 'Just now',
+      dateGroup: 'TODAY',
+      type: 'audit',
+    };
+    setActivityEvents((prev) => [newEvent, ...prev]);
+  };
+
+  // 5c. Delete Multiple Selected Leads
+  const handleDeleteSelectedCompanies = (companyIds: string[]) => {
+    if (companyIds.length === 0) return;
+
+    // Save all to deleted IDs blacklist immediately
+    try {
+      const storedDeleted = localStorage.getItem('leados_deleted_ids_v2');
+      const deletedArr: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
+      companyIds.forEach((id) => {
+        if (!deletedArr.includes(id)) deletedArr.push(id);
+      });
+      localStorage.setItem('leados_deleted_ids_v2', JSON.stringify(deletedArr));
+    } catch (e) {
+      console.warn('Error updating deleted IDs', e);
+    }
+
+    setCompanies((prev) => {
+      const updated = prev.filter((c) => !companyIds.includes(c.id));
+      try {
+        localStorage.setItem('leados_companies_v2', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (selectedCompany && companyIds.includes(selectedCompany.id)) {
+      setSelectedCompany(null);
+      setCurrentTab('RESULTS');
+    }
+    showToast(`Deleted ${companyIds.length} lead${companyIds.length > 1 ? 's' : ''} from pipeline`);
+
+    // Add activity event
+    const newEvent: ActivityEvent = {
+      id: `act-${Date.now()}`,
+      title: `Batch deleted ${companyIds.length} leads`,
+      description: `Removed ${companyIds.length} selected accounts from verified pipeline.`,
+      time: 'Just now',
+      dateGroup: 'TODAY',
+      type: 'audit',
+    };
+    setActivityEvents((prev) => [newEvent, ...prev]);
+  };
+
   // 6. Outreach Modal Handlers
   const handleOpenOutreachModal = (company: CompanyLead) => {
     setOutreachCompany(company);
@@ -332,6 +485,8 @@ export default function LeadOSApp() {
               onExportCsv={handleExportCsv}
               searchSummary={lastSearchSummary}
               onNavigateDiscover={() => setCurrentTab('DISCOVER')}
+              onDeleteCompany={handleDeleteCompany}
+              onDeleteSelectedCompanies={handleDeleteSelectedCompanies}
             />
           )}
 
@@ -342,6 +497,7 @@ export default function LeadOSApp() {
               onToggleSave={handleToggleSaveCompany}
               onAddToList={handleOpenAddToList}
               onOpenOutreachModal={handleOpenOutreachModal}
+              onDeleteCompany={handleDeleteCompany}
             />
           )}
 
@@ -352,6 +508,8 @@ export default function LeadOSApp() {
               onToggleSave={handleToggleSaveCompany}
               onAddToList={handleOpenAddToList}
               onExportCsv={handleExportCsv}
+              onDeleteCompany={handleDeleteCompany}
+              onDeleteSelectedCompanies={handleDeleteSelectedCompanies}
             />
           )}
 

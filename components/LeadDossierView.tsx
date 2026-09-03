@@ -32,6 +32,7 @@ import {
   Search,
   Calendar,
   Lock,
+  Trash2,
 } from 'lucide-react';
 import { CompanyLead, ProvenanceField, VerificationStatus } from '@/lib/types';
 import { getFieldValue, getVerificationBadge, formatFreshTimestamp } from '@/lib/provenance-utils';
@@ -43,6 +44,7 @@ interface LeadDossierViewProps {
   onToggleSave: (companyId: string) => void;
   onAddToList: (companyIds: string[]) => void;
   onOpenOutreachModal: (company: CompanyLead) => void;
+  onDeleteCompany?: (companyId: string) => void;
 }
 
 export default function LeadDossierView({
@@ -51,6 +53,7 @@ export default function LeadDossierView({
   onToggleSave,
   onAddToList,
   onOpenOutreachModal,
+  onDeleteCompany,
 }: LeadDossierViewProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isRefreshingAi, setIsRefreshingAi] = useState(false);
@@ -173,11 +176,28 @@ export default function LeadDossierView({
           <button
             id="dossier-add-to-list-btn"
             onClick={() => onAddToList([company.id])}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E5E5E1] hover:bg-[#F4F4F2] text-xs font-semibold text-[#1a1c1b] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E5E5E1] hover:bg-[#F4F4F2] text-xs font-semibold text-[#1a1c1b] transition-colors cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5 text-[#3F4943]" />
             <span>Add to Cohort</span>
           </button>
+
+          {onDeleteCompany && (
+            <button
+              id="dossier-delete-btn"
+              onClick={() => {
+                if (confirm(`Are you sure you want to delete ${company.name} from your pipeline?`)) {
+                  onDeleteCompany(company.id);
+                  onBack();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E5E5E1] text-[#8A8F98] hover:text-red-600 hover:border-red-200 hover:bg-red-50 text-xs font-semibold transition-colors cursor-pointer"
+              title="Delete Lead"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Lead</span>
+            </button>
+          )}
 
           <button
             id="dossier-generate-outreach-btn"
